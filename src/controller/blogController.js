@@ -1,6 +1,5 @@
-const BlogModel = require("../models/blogModel.js")
-const AuthorModel = require("../models/authorModel.js")
-const blogModel = require("../models/blogModel.js")
+let blogModel = require('../models/blogModel');
+let authorModel = require('../models/authorModel');
 
 /*
 1: Create a blog document from request body. Get authorId in request body only.
@@ -9,38 +8,34 @@ const blogModel = require("../models/blogModel.js")
 3: Create atleast 5 blogs for each author
 4: Return HTTP status 400 for an invalid request with a response body like this*/
 
-const createBlog = async function (req, res) {
+
+// let isPublish = blog.ispublished
+//     if(isPublish == 'true'){
+//         blog.publishedAt = Date()
+//     }
+
+let createBlogs = async function (req, res) {
     try {
-        const blog = req.body
-        let authorId = blog.author_id
-            let isPublish = blog.ispublished
-            let setPublish
-            if(isPublish == 'true'){
-                setPublish = Date()
-            }
-        let getBlogById = await AuthorModel.findById(authorId)
-        if (getBlogById) {
-            let OrderObj ={
-                title : blog.title,
-                body : blog.body,
-                author_id : blog.author_id,
-                tags : blog.tags,
-                category : blog.category,
-                subcategory : blog.subcategory,
-                deletedAt : blog.deletedAt,
-                isDeleted : blog.isDeleted,
-                publishedAt : setPublish,
-                ispublished : blog.ispublished
-            }
-            let blogCreated = await BlogModel.create(OrderObj)
-            res.status(201).send({ status: true, msg: "Success", blog: blogCreated })
+        let data = req.body
+        console.log(data)
+        let authorId = data.author_id
+        let authorReq = await authorModel.findById(authorId)
+
+         let isPublish = data.isPublished
+         console.log(isPublish)
+             if (isPublish === true) {
+                 data.publishedAt = Date.now()
+             }
+
+        if (authorReq) {
+            let createBlog = await blogModel.create(data)
+            res.status(201).send({ status: true, data: createBlog })
         } else {
-            res.status(400).send({ status: false, msg: "Enter a valid authorId" })
+            res.status(400).send({ status: false, msg: "Please enter valid authorId" })
         }
     } catch (error) {
-        res.status(500).send({ status: false, message: error.message })
-    
+        res.status(500).send({ status: false, msg: 'somthing unexpected heppend!' })
     }
-}
+};
 
-module.exports.createBlog = createBlog
+module.exports.createBlogs = createBlogs;
