@@ -40,7 +40,7 @@ const createBlog = async function (req, res) {
     } catch (error) {
         res.status(500).send({ status: false, message: error.message })
     
-}
+    }
 }
 
 module.exports.createBlog = createBlog
