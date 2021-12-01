@@ -1,5 +1,6 @@
 let blogModel = require('../models/blogModel');
 let authorModel = require('../models/authorModel');
+const { TokenExpiredError } = require('jsonwebtoken');
 
 /* POST /blogs
         1: Create a blog document from request body. Get authorId in request body only.
@@ -11,21 +12,26 @@ let authorModel = require('../models/authorModel');
 let createBlogs = async function (req, res) {
     try {
         let data = req.body
-        console.log(data)
+        //console.log(data)
         let authorId = data.author_id
-        let authorReq = await authorModel.findById(authorId)
+        //console.log(authorId)
+        if (req.validToken._id == authorId) {
+            let authorReq = await authorModel.findById(authorId)
 
-        let isPublish = data.isPublished
-        console.log(isPublish)
-        if (isPublish === true) {
-            data.publishedAt = Date.now()
-        }
+            let isPublish = data.isPublished
+            //console.log(isPublish)
+            if (isPublish === true) {
+                data.publishedAt = Date.now()
+            }
 
-        if (authorReq) {
-            let createBlog = await blogModel.create(data)
-            res.status(201).send({ status: true, data: createBlog })
+            if (authorReq) {
+                let createBlog = await blogModel.create(data)
+                res.status(201).send({ status: true, data: createBlog })
+            } else {
+                res.status(400).send({ status: false, msg: "Please enter valid authorId" })
+            }
         } else {
-            res.status(400).send({ status: false, msg: "Please enter valid authorId" })
+            res.status(403).send({ status: false, msg: "invalid token!!" })
         }
     } catch (error) {
         res.status(500).send({ status: false, msg: 'somthing unexpected heppend!' })
@@ -43,29 +49,35 @@ let createBlogs = async function (req, res) {
                     *List of blogs that have a specific subcategory example of a query url: blogs?filtername=filtervalue&f2=fv2*/
 
 let getBlogs = async function (req, res) {
-     try {
-            let array = []
-            let author_id = req.query.author_id
-            let category = req.query.category
-            let tags = req.query.tags
-            let subcategory = req.query.subcategory
+    try {
+        let array = []
+        let author_id = req.query.author_id
+        //console.log(author_id)
+        let category = req.query.category
+        let tags = req.query.tags
+        let subcategory = req.query.subcategory
+        if (req.validToken = author_id) {
             let blogs = await blogModel.find({ $or: [{ author_id: author_id }, { category: category }, { tags: tags }, { subcategory: subcategory }] })
             console.log(blogs)
             if (blogs) {
-                            console.log("hi")
-                            for (let element of blogs) {
-                            if (element.isDeleted === false && element.isPublished === true) {
-                                array.push(element)
-                            }
-                    }   
+                //console.log("hi")
+                for (let element of blogs) {
+                    if (element.isDeleted === false && element.isPublished === true) {
+                        array.push(element)
+                    }
+                }
                 res.status(201).send({ status: true, data: array })
             }
             else {
-                    res.status(400).send({ status: false, msg: "Element not found!!" })
-                }
+                res.status(400).send({ status: false, msg: "Element not found!!" })
+            }
+        }
+        else {
+            res.status(403).send({ status: false, msg: 'invalid token' })
+        }
     } catch (error) {
         res.status(404).send({ status: false, msg: 'No documents are found!' })
-        }
+    }
 }
 
 /* PUT /blogs/:blogId
@@ -75,15 +87,28 @@ let getBlogs = async function (req, res) {
         4) Return an HTTP status 200 if updated successfully with a body like this
         5) Also make sure in the response you return the updated blog document*/
 
-    const updateBlog = async function (req, res) {
-         try {
-            let body = req.body;
-            let id = req.params.blogId;
+const updateBlog = async function (req, res) {
+    try {
+        let body = req.body;
+        console.log(body)
+        //let authorid = req.query.author_id;
+        //console.log(authorid)
+        let id = req.params.blogId
+        //console.log(id)
+        let getAuthorId = await blogModel.findOne({ _id: id })
+        //console.log(getAuthorId)
+        //console.log(req.validToken)
+        let aId = getAuthorId.author_id;
+        //console.log(aId)
+        if (!getAuthorId) {
+            res.status(400).send({ status: false, message: "invalid BlogId!!!" })
+        }
+        if (req.validToken._id == aId) {
             if (body.hasOwnProperty("isPublished") == true) {
                 let updatedValue = await blogModel.findOneAndUpdate({ _id: id, isDeleted: false },
                     {
                         $set: {
-                            title: req.body.title, 
+                            title: req.body.title,
                             body: req.body.body,
                             category: req.body.category,
                             isPublished: req.body.isPublished,
@@ -95,7 +120,7 @@ let getBlogs = async function (req, res) {
                             subcategory: req.body.subcategory
                         }
                     }, { new: true })
-                    console.log(updatedValue)
+                console.log(updatedValue)
                 res.status(200).send({ msg: updatedValue });
             }
             else {
@@ -112,52 +137,82 @@ let getBlogs = async function (req, res) {
                             subcategory: req.body.subcategory
                         }
                     }, { new: true })
-    
+
                 res.status(200).send({ msg: updatedValue });
             }
-        } catch (error) {
-             console.log(error)
-            res.status(500).send({ status: false, message: error.message });
+        } else {
+            res.status(404).send({ status: false, message: 'invalid token' })
         }
-    };
-    
-    /*DELETE /blogs/:blogId
-        1)Check if the blogId exists( and is not deleted). If it does, mark it deleted and return an HTTP status 200 without any response body.
-        2)If the blog document doesn't exist then return an HTTP status of 404 with a body like this*/
+    } catch (error) {
+        console.log(error)
+        res.status(500).send({ status: false, message: error.message });
+    }
+};
 
-    const deleteById = async function (req, res) {
-        try {
-            let id = req.params.blogId;
+/*DELETE /blogs/:blogId
+    1)Check if the blogId exists( and is not deleted). If it does, mark it deleted and return an HTTP status 200 without any response body.
+    2)If the blog document doesn't exist then return an HTTP status of 404 with a body like this*/
+
+const deleteById = async function (req, res) {
+    try {
+        let id = req.params.blogId
+        //console.log(id)
+        let getAuthorId = await blogModel.findOne({ _id: id })
+        //console.log(getAuthorId)
+        //console.log(req.validToken)
+        let aId = getAuthorId.author_id;
+        //console.log(aId)
+        if (!getAuthorId) {
+            res.status(400).send({ status: false, message: "invalid BlogId!!!" })
+        }
+        if (req.validToken._id == aId) {
             let data = await blogModel.findOne({ _id: id, isDeleted: false })
             if (data) {
-    
+
                 let deleteData = await blogModel.findOneAndUpdate({ _id: id },
                     { $set: { isDeleted: true, deletedAt: Date.now() } }, { new: true })
                 res.status(200).send({ msg: deleteData })
-    
+
             } else {
                 res.send({ msg: "invalid input of id or the document is already delete" })
             }
-        } catch (err) {
-            res.status(400).send({ msg: err.message })
+        }else{
+            res.status(403).send({ status: false, message: 'invalid token' })  
         }
+    } catch (err) {
+        res.status(400).send({ msg: err.message })
     }
-    
-    /* DELETE /blogs?queryParams
-            Delete blog documents by category, authorid, tag name, subcategory name, unpublished
-            If the blog document doesn't exist then return an HTTP status of 404 with a body like this*/
+}
 
-    const deleteByQuery = async function (req, res) {
-        try {
-            let input = req.query;
-            let deleteData = await blogModel.findOneAndUpdate(input,
-                { $set: { isDeleted: true, deletedAt: Date.now() } }, { new: true })
-            res.status(200).send({ msg: deleteData })
+/* DELETE /blogs?queryParams
+        Delete blog documents by category, authorid, tag name, subcategory name, unpublished
+        If the blog document doesn't exist then return an HTTP status of 404 with a body like this*/
+
+const deleteByQuery = async function (req, res) {
+    try {
+        let id = req.query.author_id
+        //console.log(id)
+        let getAuthorId = await blogModel.findOne({ _id: id })
+        //console.log(getAuthorId)
+        //console.log(req.validToken)
+        let aId = getAuthorId.author_id;
+        //console.log(aId)
+        if (!getAuthorId) {
+            res.status(400).send({ status: false, message: "invalid BlogId!!!" })
         }
-        catch (err) {
-            res.status(404).send({ msg: err.message })
+        if (req.validToken._id == aId) {
+        let input = req.query;
+        let deleteData = await blogModel.findOneAndUpdate(input,
+            { $set: { isDeleted: true, deletedAt: Date.now() } }, { new: true })
+        res.status(200).send({ msg: deleteData })
+        }else{
+            res.status(403).send({ status: false, message: 'invalid token' }) 
         }
     }
+    catch (err) {
+        res.status(404).send({ msg: err.message })
+    }
+}
 
 module.exports.getBlogs = getBlogs;
 module.exports.createBlogs = createBlogs;
