@@ -11,9 +11,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/", route);
 
 mongoose.connect(
-    "mongodb+srv://users-open-to-all:hiPassword123@cluster0.uh35t.mongodb.net/MuskanSayyad_DB?retryWrites=true&w=majority",{ useNewUrlParser: true })
+    "mongodb+srv://user-open-to-all:hiPassword123@cluster0.xgk0k.mongodb.net/Muskan_Sayyad-database?retryWrites=true&w=majority",{ useNewUrlParser: true })
 	.then(() => console.log("mongodb running and connected"))
 	.catch((err) => console.log(err));
+// mongoose.connect('mongodb://localhost/MS_DB')
+// .then(()=>console.log('Connected to MongoDB Test Environment..'))
+// .catch(err=>console.error('Could not connect to mongo',err))
 
 app.listen(process.env.PORT || 3000, function () {
   console.log("Express app running on port " + (process.env.PORT || 3000));

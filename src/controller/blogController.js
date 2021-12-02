@@ -52,24 +52,41 @@ let getBlogs = async function (req, res) {
     try {
         let array = []
         let author_id = req.query.author_id
+        let subcategory = req.query.subcategory
         //console.log(author_id)
         let category = req.query.category
         let tags = req.query.tags
-        let subcategory = req.query.subcategory
+        let getQuery = {
+            isDeleted : false,
+            isPublished : true
+        }
         if (req.validToken = author_id) {
-            let blogs = await blogModel.find({ $or: [{ author_id: author_id }, { category: category }, { tags: tags }, { subcategory: subcategory }] })
-            console.log(blogs)
-            if (blogs) {
+        if(req.query.author_id){
+            getQuery.author_id=req.query.author_id
+        } 
+        if(req.query.tags){
+            getQuery.tags=req.query.tags
+        }
+        if(req.query.category){
+            getQuery.category=req.query.category
+        }
+        if(req.query.subcategory){
+            getQuery.subcategory=req.query.subcategory
+        }
+        let block = await blogModel.find(getQuery)
+           // let blogs = await blogModel.find({ $or: [{ author_id: author_id }, { category: category }, { tags: tags }, { subcategory: subcategory }] })
+            console.log(getQuery)
+            if (block.length == 0) {
                 //console.log("hi")
-                for (let element of blogs) {
-                    if (element.isDeleted === false && element.isPublished === true) {
-                        array.push(element)
-                    }
-                }
-                res.status(201).send({ status: true, data: array })
+                // for (let element of getQuery) {
+                //     if (element.isDeleted === false && element.isPublished === true) {
+                //         array.push(element)
+                //     }
+               // }
+                res.status(400).send({ status: false, data:  "Element not found!!"  })
             }
             else {
-                res.status(400).send({ status: false, msg: "Element not found!!" })
+                res.status(200).send({ status: true, msg: block })
             }
         }
         else {
@@ -95,6 +112,7 @@ const updateBlog = async function (req, res) {
         //console.log(authorid)
         let id = req.params.blogId
         //console.log(id)
+        if (req.validToken._id == aId) {
         let getAuthorId = await blogModel.findOne({ _id: id })
         //console.log(getAuthorId)
         //console.log(req.validToken)
@@ -103,7 +121,6 @@ const updateBlog = async function (req, res) {
         if (!getAuthorId) {
             res.status(400).send({ status: false, message: "invalid BlogId!!!" })
         }
-        if (req.validToken._id == aId) {
             if (body.hasOwnProperty("isPublished") == true) {
                 let updatedValue = await blogModel.findOneAndUpdate({ _id: id, isDeleted: false },
                     {
@@ -158,10 +175,10 @@ const deleteById = async function (req, res) {
         let id = req.params.blogId
         //console.log(id)
         let getAuthorId = await blogModel.findOne({ _id: id })
-        //console.log(getAuthorId)
+        console.log(getAuthorId)
         //console.log(req.validToken)
         let aId = getAuthorId.author_id;
-        //console.log(aId)
+        console.log(aId)
         if (!getAuthorId) {
             res.status(400).send({ status: false, message: "invalid BlogId!!!" })
         }
@@ -190,21 +207,43 @@ const deleteById = async function (req, res) {
 
 const deleteByQuery = async function (req, res) {
     try {
-        let id = req.query.author_id
-        //console.log(id)
-        let getAuthorId = await blogModel.findOne({ _id: id })
-        //console.log(getAuthorId)
-        //console.log(req.validToken)
-        let aId = getAuthorId.author_id;
-        //console.log(aId)
+        let getQuery = {
+            isDeleted : false
+        }
+        if(req.query.author_id){
+            getQuery.author_id=req.query.author_id
+        } 
+        if(req.query.tags){
+            getQuery.tags=req.query.tags
+        }
+        if(req.query.category){
+            getQuery.category=req.query.category
+        }
+        if(req.query.subcategory){
+            getQuery.subcategory=req.query.subcategory
+        }
+        if(req.query.isPublished){
+            getQuery.isPublished = req.query.isPublished
+        }
+        console.log(getQuery)
+        // console.log(req.params)
+    
+        let getAuthorId = await blogModel.find(getQuery)
+        console.log("here" + getAuthorId)
+        console.log(req.validToken)
         if (!getAuthorId) {
             res.status(400).send({ status: false, message: "invalid BlogId!!!" })
         }
-        if (req.validToken._id == aId) {
-        let input = req.query;
-        let deleteData = await blogModel.findOneAndUpdate(input,
-            { $set: { isDeleted: true, deletedAt: Date.now() } }, { new: true })
-        res.status(200).send({ msg: deleteData })
+        if(req.query.author_id==req.validToken._id) {
+            console.log("inside Delete")
+            let blogsData=[]
+            for(let i=0; i<getAuthorId.length; i++){
+                 let deleteData = await blogModel.findOneAndUpdate(getQuery,
+                    { $set: { isDeleted: true, deletedAt: Date.now() } }, { new: true})
+                    console.log("here 4"+deleteData)
+                    blogsData.push(deleteData)
+            }
+        res.status(200).send({ msg: blogsData })
         }else{
             res.status(403).send({ status: false, message: 'invalid token' }) 
         }
