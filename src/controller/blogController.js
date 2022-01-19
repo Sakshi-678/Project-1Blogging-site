@@ -1,6 +1,6 @@
 let blogModel = require('../models/blogModel');
 let authorModel = require('../models/authorModel');
-const { TokenExpiredError } = require('jsonwebtoken');
+
 
 /* POST /blogs
         1: Create a blog document from request body. Get authorId in request body only.
@@ -29,7 +29,7 @@ let createBlogs = async function (req, res) {
                 res.status(400).send({ status: false, msg: "Please enter valid authorId" })
             }
         } else {
-            res.status(403).send({ status: false, msg: "invalid token!!" })
+            res.status(400).send({ status: false, msg: "invalid token!!" })
         }
     } catch (error) {
         res.status(500).send({ status: false, msg: error.message })
@@ -48,12 +48,9 @@ let createBlogs = async function (req, res) {
 
 let getBlogs = async function (req, res) {
     try {
-        let getQuery = {
-            isDeleted: false,
-            isPublished: true
-        }
-        if (req.query.author_id) {
-            getQuery.author_id = req.query.author_id
+        let getQuery = { isDeleted: false, isPublished: true }
+        if (req.query.authorId) {
+            getQuery.author_id = req.query.authorId
         }
         if (req.query.tags) {
             getQuery.tags = req.query.tags
@@ -66,16 +63,19 @@ let getBlogs = async function (req, res) {
         }
         let block = await blogModel.find(getQuery)
         if (block.length == 0) {
-            res.status(400).send({ status: false, data: "Element not found!!" })
-        }
-        else {
-            res.status(200).send({ status: true, msg: block })
+            res.status(400).send({ status: false, data: "blog not found!!" })
         }
 
-    } catch (error) {
-        res.status(500).send({ status: false, msg: error.message })
+        else {
+          return res.status(200).send({ status: true, msg: block })
+         }
+    } catch (err) {
+        res.status(500).send({ status: false, msg: err.message })
+
     }
+
 }
+
 
 /* PUT /blogs/:blogId
         1) Updates a blog by changing its title, body, adding tags, adding a subcategory. (Assuming tag and subcategory received in body is need to be added)
@@ -89,7 +89,7 @@ const updateBlog = async function (req, res) {
         let body = req.body;
         let authorid = body.author_id;
         let id = req.params.blogId
-        if (req.validToken._id == authorid) {
+        // if (req.validToken._id == authorid) {
             let getAuthorId = await blogModel.findOne({ _id: id })
             if (!getAuthorId) {
                 res.status(400).send({ status: false, message: "invalid BlogId!!!" })
@@ -130,9 +130,9 @@ const updateBlog = async function (req, res) {
 
                 res.status(200).send({ msg: updatedValue });
             }
-        } else {
-            res.status(404).send({ status: false, message: 'invalid token' })
-        }
+        // } else {
+        //     res.status(404).send({ status: false, message: 'invalid token' })
+        // }
     } catch (error) {
         res.status(500).send({ status: false, message: error.message });
     }
@@ -194,9 +194,9 @@ const deleteByQuery = async function (req, res) {
             getQuery.isPublished = req.query.isPublished
         }
         let getAuthorId = await blogModel.find(getQuery)
-        if (!getAuthorId) {
-            res.status(400).send({ status: false, message: "invalid BlogId!!!" })
-        }
+        // if (!getAuthorId) {
+        //     res.status(400).send({ status: false, message: "invalid BlogId!!!" })
+        // }
         if (req.query.author_id == req.validToken._id) {
 
             let blogsData = []
@@ -207,8 +207,9 @@ const deleteByQuery = async function (req, res) {
                 blogsData.push(deleteData)
             }
             res.status(200).send({ msg: blogsData })
-        } else {
-            res.status(403).send({ status: false, message: 'invalid token' })
+        // }else {
+        //     res.status(403).send({ status: false, message: 'invalid token' })
+        // }
         }
     }
     catch (err) {
